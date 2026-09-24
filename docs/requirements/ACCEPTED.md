@@ -2279,9 +2279,511 @@ Temel prensip:
 
 > Time Engine gerçekleşen olayları kaydeder; raporlama katmanı bu olaylardan anlamlı göstergeler üretir.
 ---
+## REQ-171 — Kesinti Nedeni Tanımları
+
+**Status:** ACCEPTED
+
+Kesinti kayıtları bir veya daha fazla Kesinti Nedeni ile ilişkilendirilebilir.
+
+Sistem başlangıçta aşağıdaki Kesinti Nedenlerini sağlar:
+
+- Yönetici
+- Personel
+- Okullar
+- Vatandaş
+- Telefon
+- Mola
+- Acil İş
+- Teknik Problem
+- İstenmeyen Sohbet
+- Toplantı
+- Diğer
+
+Kullanıcı yeni Kesinti Nedeni oluşturabilir.
+
+Kesinti Nedenleri silinemez; pasifleştirilebilir.
+
+Pasifleştirilen nedenler yeni Kesinti kayıtlarında seçilemez ancak geçmiş kayıtlarla olan ilişkileri korunur.
+
+Kesinti Nedenlerinin görünen adı değiştirilebilir.
+
+Her Kesinti Nedeni değişmez bir ID ile tanımlanır. Ad değişikliği geçmiş Kesinti kayıtlarının referansını değiştirmez.
+---
+## REQ-172 — Kesinti Nedeninin Girilme Zamanı
+
+**Status:** ACCEPTED
+
+Kesinti başlatılırken Kesinti Nedeni girilmesi zorunlu değildir.
+
+Kesinti Nedeni, Kesinti sonlandırma sürecinde girilebilir.
+
+Kullanıcı `Kesinti` eylemini kullandığında Kesinti hemen başlar ve Time Engine tarafından takip edilir.
+
+Kullanıcı Kesintiyi sonlandırmak istediğinde neden seçimi ekranına geçer.
+
+Kesinti, neden seçimi ve kayıt işlemi tamamlanana kadar devam ediyor kabul edilir.
+---
+## REQ-173 — Kesinti Nedeni Zorunluluğu
+
+**Status:** ACCEPTED
+
+Bir Kesinti kaydının tamamlanabilmesi için en az bir Kesinti Nedeni seçilmelidir.
+
+Kesinti Nedeni seçimi tamamlanmadan Kesinti sonlandırılamaz.
+
+Kesinti Nedeni için açıklama alanı bulunur ancak açıklama zorunlu değildir.
+---
+## REQ-174 — Çoklu Kesinti Nedeni
+
+**Status:** ACCEPTED
+
+Bir Kesinti birden fazla Kesinti Nedeni ile ilişkilendirilebilir.
+
+Birden fazla neden seçildiğinde sistem başlangıçta tüm nedenlere eşit ağırlık verir.
+
+Tek bir neden seçildiğinde ağırlıklandırma arayüzü gösterilmez.
+---
+## REQ-175 — Kesinti Nedeni Ağırlığı
+
+**Status:** ACCEPTED
+
+Bir Kesinti birden fazla Kesinti Nedeni içeriyorsa her neden için 1–5 arasında bir ağırlık belirlenebilir.
+
+Varsayılan ağırlık tüm seçili nedenler için eşittir.
+
+Ağırlıkların toplamının belirli bir değere, örneğin %100'e, eşit olması gerekmez.
+
+Raporlama katmanı Kesinti süresini nedenlerin ağırlıklarına göre dağıtır.
+
+Örneğin:
+
+- Yönetici: 5
+- Telefon: 4
+- Mola: 3
+
+ise toplam ağırlık 12 kabul edilir ve Kesinti süresi:
+
+- Yönetici: `5 / 12`
+- Telefon: `4 / 12`
+- Mola: `3 / 12`
+
+oranında dağıtılır.
+
+Ağırlık sistemi Time Engine'in temel olay modelini değiştirmez; süre dağılımı raporlama katmanında hesaplanır.
+---
+## REQ-176 — Kesinti Sonlandırma Süreci
+
+**Status:** ACCEPTED
+
+`Kesintiyi Bitir` eylemi Kesintiyi anında sonlandırmaz.
+
+Bu eylem Kesintinin sonlandırılması için gerekli veri giriş sürecini başlatır.
+
+Kullanıcı:
+
+1. Bir veya daha fazla Kesinti Nedeni seçer.
+2. Gerekirse açıklama girer.
+3. Birden fazla neden varsa ağırlıkları düzenler.
+4. `Kaydet` eylemini kullanır.
+
+Kesinti ancak `Kaydet` işlemi başarıyla tamamlandığında sonlandırılmış kabul edilir.
+
+Neden girişi ekranında kullanıcıya `Vazgeç` seçeneği sunulmaz.
+
+Kullanıcı `Kaydet` işlemini tamamlayana kadar Kesinti süresi devam eder.
+---
+## REQ-177 — Kesinti Sırasında İşlem Kısıtları
+
+**Status:** ACCEPTED
+
+Aktif bir Kesinti devam ederken kullanıcı normal çalışma akışına dönemez.
+
+Kesinti tamamlanmadan:
+
+- başka Task'a geçilemez,
+- başka Task görüntülenemez,
+- aynı Task üzerinde çalışmaya başlanamaz,
+- yeni Kesinti başlatılamaz,
+- `Duraklat / Beklet` kullanılamaz.
+
+Kesinti önce tamamlanmalı, ardından normal Task çalışma akışına dönülmelidir.
+---
+## REQ-178 — Kesinti Sırasında Uygulama Kapatma
+
+**Status:** ACCEPTED
+
+Aktif bir Kesinti sırasında uygulamanın normal kullanıcı arayüzü üzerinden kapatılması engellenir.
+
+İşletim sistemi tarafından zorla sonlandırma, uygulama çökmesi veya benzeri beklenmeyen kapanma durumlarında sistem mevcut Kesinti kaydını mümkün olduğu ölçüde sonlandırarak kaydetmeye çalışır.
+
+Kullanıcı tarafından Kesinti Nedeni girilememişse:
+
+- Kesinti Nedeni: `Diğer`
+- Kaynak: Sistem Fallback
+
+olarak kaydedilir.
+
+Sistem Fallback ile oluşturulan kayıtlar, kullanıcının normal akışta `Diğer` seçtiği Kesinti kayıtlarından ayırt edilebilir.
+---
+## REQ-179 — Duraklatılmış Task'ın Status'u
+
+**Status:** ACCEPTED
+
+`Duraklat / Beklet` eylemi kullanıldığında Task Status'u `Devam Ediyor` olarak kalır.
+
+Duraklatma, Task'ın Status'unu `Beklemede` durumuna otomatik olarak değiştirmez.
+
+Duraklatılmış Task'ın çalışma timer'ı aktif değildir.
 
 ---
+## REQ-180 — Duraklatılmış Task'tan Geçiş
 
+**Status:** ACCEPTED
+
+Duraklatılmış bir Task'tan başka bir Task'a `Geçiş Yap` ile geçilebilir.
+
+`Geçiş Yap` açık kullanıcı niyetini ifade eden bir eylemdir.
+
+Duraklatılmış bir Task'ın görüntülenmesi tek başına geçiş oluşturmaz ve timer başlatmaz.
+
+Kullanıcı hedef Task üzerinde çalışmaya başlamak için açıkça `Geçiş Yap` eylemini kullanmalıdır.
+---
+## REQ-181 — Uygulama Açılışında Dashboard
+
+**Status:** ACCEPTED
+
+lapwOS her uygulama açılışında Dashboard ile başlar.
+
+Uygulamanın açılması herhangi bir Task'ın çalışma timer'ını otomatik olarak başlatmaz.
+
+Dashboard üzerinde duraklatılmış Task'lar ayrı bir bölümde gösterilebilir.
+
+Duraklatılmış bir Task'ın Dashboard'da görüntülenmesi timer'ı başlatmaz.
+
+Kullanıcı çalışmaya başlamak için açıkça ilgili çalışma eylemini kullanmalıdır.
+---
+## REQ-182 — Task Görüntüleme ve Açık Çalışma Eylemi
+
+**Status:** ACCEPTED
+
+Dashboard üzerinde bir Task'ın görüntülenmesi Task'ın çalışma timer'ını başlatmaz.
+
+Dashboard'daki bir Task'a veya Decision Engine önerisine tıklanması yalnızca ilgili Task'ın görüntülenmesini sağlar.
+
+Task'ın çalışma timer'ı yalnızca açık bir kullanıcı çalışma eylemi sonucunda başlatılabilir:
+
+- Aktif bir Task yoksa `Başlat` eylemi ile,
+- Başka bir Task aktifse hedef Task üzerindeki `Geçiş Yap` eylemi ile.
+
+Task görüntüleme, öneriye tıklama, Dashboard navigasyonu veya başka bir pasif kullanıcı etkileşimi Task'ın timer'ını otomatik olarak başlatamaz.
+
+`Başlat` ve `Geçiş Yap` açık kullanıcı niyetini ifade eden çalışma eylemleridir.
+---
+## REQ-183 — Task Durumuna Göre Çalışma Eylemleri
+
+**Status:** ACCEPTED
+
+Task ekranında gösterilen çalışma eylemleri, Task Status ve Timer State'e göre belirlenir.
+
+### Başlanmadı
+
+Aşağıdaki eylemler kullanılabilir:
+
+- `Başlat`
+- `Tamamla`
+
+### Devam Ediyor + Timer çalışıyor
+
+Aşağıdaki eylemler kullanılabilir:
+
+- `Duraklat / Beklet`
+- `Kesinti`
+- `Tamamla`
+
+### Devam Ediyor + Timer duraklatılmış
+
+Aşağıdaki eylemler kullanılabilir:
+
+- `Devam Et`
+- `Tamamla`
+
+### Beklemede
+
+Aşağıdaki çalışma eylemi kullanılabilir:
+
+- `Devam Et`
+
+Beklemede olan Task'ın timer'ı otomatik olarak başlatılamaz.
+
+### Başka bir Task aktifken görüntülenen Task
+
+Hedef Task üzerinde aşağıdaki eylem kullanılabilir:
+
+- `Geçiş Yap`
+
+`Geçiş Yap`, açık kullanıcı niyetini ifade eder ve hedef Task'ın çalışma timer'ını başlatır.
+
+### Tamamlandı
+
+Aşağıdaki eylem kullanılabilir:
+
+- `Yeniden Aç`
+
+Tamamlanmış Task üzerinde normal çalışma eylemleri gösterilmez.
+
+### Aktif Kesinti
+
+Aktif bir Kesinti sırasında yalnızca:
+
+- `Kesintiyi Bitir`
+
+eylemi kullanılabilir.
+
+Kesinti tamamlanmadan Task değiştirme, başka Task görüntüleme, yeni Kesinti başlatma veya Duraklatma gibi diğer çalışma eylemleri kullanılamaz.
+
+`Başlat` ve `Devam Et` kullanıcı arayüzünde farklı metinler olarak gösterilebilir. Her ikisi de Time Engine açısından açık kullanıcı niyetiyle yeni bir çalışma döneminin başlatılmasını ifade eder.
+---
+## REQ-184 — Timer State Modeli
+
+**Status:** ACCEPTED
+
+lapwOS Timer State modeli üç temel durumdan oluşur:
+
+- `IDLE`
+- `RUNNING`
+- `PAUSED`
+
+### IDLE
+
+Çalışma timer'ının aktif olmadığı durumu ifade eder.
+
+`IDLE`, Task'ın neden çalışmadığını tek başına açıklamaz.
+
+Task aşağıdaki durumlardan herhangi birindeyken Timer State `IDLE` olabilir:
+
+- Henüz başlanmamış Task
+- Beklemede olan Task
+- Kesinti sırasında olan Task
+- Çalışması sonlandırılmış Task
+- Tamamlanmış Task
+
+### RUNNING
+
+Task'ın çalışma timer'ının aktif olduğu ve çalışma süresinin biriktiği durumu ifade eder.
+
+Aynı anda yalnızca bir Task `RUNNING` Timer State'inde olabilir.
+
+### PAUSED
+
+Task'ın çalışma timer'ının kullanıcı tarafından `Duraklat / Beklet` eylemiyle geçici olarak durdurulduğu durumu ifade eder.
+
+`PAUSED` durumunda çalışma süresi birikmez.
+
+Duraklatma Task Status'unu otomatik olarak değiştirmez.
+
+Timer State ile Task Status birbirinden bağımsız kavramlardır.
+---
+## REQ-185 — Kesinti ve Beklemenin Timer State'den Ayrılması
+
+**Status:** ACCEPTED
+
+Kesinti ve Bekleme, Timer State olarak modellenmez.
+
+Kesinti ve Bekleme kendi yaşam döngülerine ve zaman bilgilerine sahip ayrı kavramlardır.
+
+Timer State yalnızca çalışma timer'ının mevcut durumunu ifade eder:
+
+- `IDLE`
+- `RUNNING`
+- `PAUSED`
+
+### Kesinti
+
+Kesinti sırasında Task'ın çalışma timer'ı aktif değildir.
+
+Kesinti için ayrıca başlangıç ve bitiş zamanları ile kesintinin nedenleri ve ilgili diğer bilgiler saklanır.
+
+Kesinti süresi Time Engine ve raporlama tarafından ayrı olarak hesaplanabilir ve nedenlerine göre filtrelenebilir.
+
+Kesinti sırasında Timer State `IDLE` olabilir; `INTERRUPTED` ayrı bir Timer State değildir.
+
+### Bekleme
+
+Bekleme sırasında Task'ın çalışma timer'ı aktif değildir.
+
+Bekleme nedeni ve bekleme süresi ayrı olarak takip edilir.
+
+Bekleme için ayrı bir Timer State oluşturulmaz.
+
+Timer State'in `IDLE` olması, Task'ın neden çalışmadığını tek başına ifade etmez.
+
+Task'ın çalışmama nedeni ilgili Task Status, Bekleme veya Kesinti bilgileri üzerinden belirlenir.
+---
+## REQ-186 — Kesinti Sürelerinin Nedenlere Göre Raporlanması
+
+**Status:** ACCEPTED
+
+Kesinti süreleri Time Engine tarafından ayrı bir zaman aralığı olarak izlenebilir ve raporlama katmanında nedenlerine göre filtrelenebilir.
+
+Bir Kesinti birden fazla nedene sahip olabilir.
+
+Birden fazla neden seçildiğinde her neden için ağırlık değeri kullanılabilir.
+
+- Varsayılan ağırlıklar eşit olabilir.
+- Kullanıcı ağırlıkları değiştirebilir.
+- Ağırlıkların toplamının 100 olması zorunlu değildir.
+- Her nedenin süre payı, toplam ağırlığa oranlanarak hesaplanır.
+
+Örneğin 60 dakikalık bir Kesinti için:
+
+- Telefon: 5
+- Personel: 3
+- Toplantı: 2
+
+ağırlıkları verilirse toplam ağırlık 10 olur ve raporlama süresi:
+
+- Telefon: 30 dakika
+- Personel: 18 dakika
+- Toplantı: 12 dakika
+
+olarak dağıtılabilir.
+
+Kesinti nedenleri ve süre dağılımları raporlama amacıyla kullanılabilir.
+
+Timer State modeli, Kesinti nedenlerinin ve sürelerinin raporlanabilmesini engellememelidir.
+---
+## REQ-187 — Recovery State Mekanizması
+
+**Status:** ACCEPTED
+
+lapwOS, uygulamanın beklenmeyen şekilde kapanması durumunda son bilinen uygulama durumunu tespit edebilmek için ayrı bir Recovery State mekanizmasına sahip olmalıdır.
+
+Recovery State, Time Engine'in kaynağı değildir.
+
+Recovery State yalnızca uygulamanın son bilinen çalışma durumunun yeniden oluşturulmasına yardımcı olan bir snapshot mekanizmasıdır.
+
+Recovery State aşağıdaki gibi temel bilgiler içerebilir:
+
+- Snapshot zamanı
+- Uygulamanın çalışma durumu
+- Aktif Work/Task kimliği
+- Timer State
+- Aktif Kesinti bilgisi
+- Aktif Session bilgisi
+- Son güvenilir Time Engine event kimliği
+
+Recovery State geçmiş kayıtların üzerine yazılarak güncellenir.
+
+Recovery State geçmiş snapshot'ları append ederek biriktirmez.
+
+Bu nedenle Recovery State dosyasının boyutu zaman içinde snapshot geçmişi nedeniyle sürekli büyümemelidir.
+
+Recovery State ile Time Engine birbirinden bağımsız sorumluluklara sahiptir:
+
+- Time Engine → gerçek zamanlı çalışma tarihçesinin kaynağı
+- Recovery State → beklenmeyen kapanma sonrası son bilinen uygulama durumunun kaynağı
+---
+## REQ-188 — Recovery Snapshot Periyodu
+
+**Status:** ACCEPTED
+
+Recovery State snapshot'ı varsayılan olarak **1 dakikalık periyotlarla** güncellenmelidir.
+
+Snapshot mekanizmasının amacı uygulamanın son bilinen durumunu mümkün olduğunca güncel tutmaktır.
+
+1 dakikalık snapshot periyodu, 10 dakikalık periyoda göre beklenmeyen kapanma sonrasında belirsiz kalan zaman aralığını azaltır.
+
+Recovery Snapshot periyodu, Time Engine event kayıtlarının yerine geçmez.
+
+Önemli çalışma durumu değişiklikleri Time Engine tarafından event olarak kendi yaşam döngüsü içinde ayrıca kaydedilir.
+
+Recovery Snapshot'ın periyodik olarak yazılması, Time Engine event'lerinin oluşturulma ve kaydedilme mantığını değiştirmez.
+---
+## REQ-189 — Recovery State ve Time Engine Ayrımı
+
+**Status:** ACCEPTED
+
+Recovery State, Time Engine'in ikinci bir kaynağı olarak kullanılmamalıdır.
+
+Time Engine'in kaynağı immutable Time Event kayıtlarıdır.
+
+Recovery State yalnızca son bilinen uygulama durumunu temsil eder.
+
+Recovery State üzerinden geçmişte gerçekleştiği kesin olarak doğrulanamayan yeni bir çalışma, bekleme veya kesinti süresi otomatik olarak oluşturulamaz.
+
+Örneğin uygulama `RUNNING` durumundayken beklenmeyen şekilde kapanırsa, son Recovery Snapshot ile uygulamanın yeniden açılması arasındaki zaman otomatik olarak çalışma süresine eklenmemelidir.
+
+Recovery mekanizması bilinmeyen zaman aralıklarını tahmin ederek Time Engine tarihçesine yeni süreler yazamaz.
+
+Bu kural, lapwOS'un geçmişte gerçekleştiği kesin olarak bilinmeyen zamanı otomatik olarak uydurmamasını sağlar.
+---
+## REQ-190 — Recovery State ile Beklenmeyen Kapanma Tespiti
+
+**Status:** ACCEPTED
+
+lapwOS, uygulamanın normal şekilde kapatılıp kapatılmadığını tespit edebilmek için Recovery State içinde uygulama yaşam döngüsünü belirten bir durum bilgisi tutmalıdır.
+
+Uygulama çalışırken Recovery State normal çalışma durumunu temsil etmelidir.
+
+Normal uygulama kapanışı sırasında Recovery State güvenli kapanış durumuna geçirilmelidir.
+
+Uygulama yeniden açıldığında önceki Recovery State güvenli kapanış durumunda değilse beklenmeyen kapanma olasılığı tespit edilmelidir.
+
+Beklenmeyen kapanma tespiti ile kullanıcı müdahalesi gerektiren recovery durumu aynı kavram değildir.
+
+Örneğin aktif bir çalışma timer'ı yoksa beklenmeyen kapanma tespit edilmiş olsa bile kullanıcıya ayrıca recovery ekranı gösterilmesi zorunlu değildir.
+---
+## REQ-191 — Time Event Timestamp Hassasiyeti
+
+**Status:** ACCEPTED
+
+Time Engine event timestamp'leri dakika ile sınırlandırılmamalıdır.
+
+Event kayıtları mümkün olduğunca hassas bir zaman bilgisiyle saklanmalıdır.
+
+Örneğin:
+
+- `WORK_STARTED` → 10:23:41
+- `WORK_PAUSED` → 11:07:18
+
+gibi zaman bilgileri korunabilir.
+
+Çalışma süresi ve diğer zaman aralıkları event timestamp'lerinden hesaplanır.
+
+Raporlama katmanı bu süreleri kullanıcıya dakika bazında gösterebilir.
+
+Dolayısıyla:
+
+**Veri saklama hassasiyeti ≠ raporlama gösterim hassasiyeti**
+
+olmalıdır.
+
+Bu yaklaşım gelecekte daha hassas raporlama ihtiyacının ortaya çıkması halinde geçmiş zaman bilgisinin kaybedilmesini önler.
+---
+## REQ-192 — Recovery Snapshot İçeriği
+
+**Status:** ACCEPTED
+
+Recovery Snapshot, recovery amacı için gerekli minimum uygulama durumunu içermelidir.
+
+Temel olarak aşağıdaki bilgiler snapshot içinde tutulabilir:
+
+- `schema_version`
+- `saved_at`
+- uygulama çalışma durumu
+- aktif Work/Task kimliği
+- Timer State
+- aktif Kesinti durumu
+- Session durumu
+- `last_event_id`
+- `last_event_timestamp`
+
+Recovery Snapshot'a geçmiş Time Engine event'lerinin tamamı tekrar yazılmamalıdır.
+
+Recovery Snapshot geçmiş event tarihçesinin kopyası değildir.
+
+`last_event_id` ve `last_event_timestamp`, Recovery State ile Time Engine arasındaki son bilinen noktayı ilişkilendirmek için kullanılabilir.
+---
 
 # 21. Explicitly Unresolved / Separate Design Topics
 

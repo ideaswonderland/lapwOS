@@ -2784,6 +2784,96 @@ Recovery Snapshot geçmiş event tarihçesinin kopyası değildir.
 
 `last_event_id` ve `last_event_timestamp`, Recovery State ile Time Engine arasındaki son bilinen noktayı ilişkilendirmek için kullanılabilir.
 ---
+## REQ-193 — Sleep / Hibernate Sırasında Çalışma Timer'ının Durumu
+
+**Status:** ACCEPTED
+
+İşletim sistemi tarafından Sleep veya Hibernate durumuna geçiş güvenilir şekilde tespit edilebildiğinde, aktif çalışma timer'ı otomatik olarak durdurulmalıdır.
+
+Sleep veya Hibernate öncesinde aktif bir Task'ın Timer State'i:
+
+`RUNNING → IDLE`
+
+olmalıdır.
+
+Bu sistem kaynaklı durdurma, Time Engine üzerinde `WORK_PAUSED` event'i ile kaydedilmelidir.
+
+Sistem kaynaklı durdurma, kullanıcı tarafından gerçekleştirilen `Duraklat / Beklet` eyleminden ayırt edilebilir olmalıdır.
+
+Sleep veya Hibernate süresince geçen zaman çalışma süresine dahil edilmemelidir.
+
+Bilgisayar Sleep veya Hibernate durumundan döndüğünde Task'ın çalışma timer'ı otomatik olarak yeniden başlatılamaz.
+
+Wake sonrasında Task `IDLE` durumda kalır.
+
+Kullanıcı çalışmaya devam etmek istediğinde açık bir `Devam Et` eylemi gerçekleştirmelidir.
+
+`Devam Et` eylemi yeni bir `WORK_STARTED` event'i oluşturur.
+
+Bu davranış, bilgisayarın kullanıcı müdahalesi olmadan çalışma timer'ını yeniden başlatmasını engeller.
+---
+## REQ-194 — Aktif Kesinti Recovery Davranışı
+
+**Status:** ACCEPTED
+
+Uygulama beklenmeyen şekilde kapandığında aktif bir Kesinti bulunuyorsa, Kesinti otomatik olarak sonlandırılamaz.
+
+Recovery sonrasında aktif Kesinti tamamlanmadan aşağıdaki çalışma eylemleri kullanılamaz:
+
+- Task değiştirme
+- Başka Task görüntüleme
+- Çalışma başlatma
+- Yeni Kesinti başlatma
+- Duraklatma
+- Diğer çalışma eylemleri
+
+Öncelikle mevcut Kesinti sonlandırılmalıdır.
+
+Recovery ekranında kullanıcıdan Kesintinin bitiş zamanını belirlemesi istenir.
+
+Kullanıcı:
+
+- Kesintinin gerçek bitiş zamanını seçebilir.
+- Gerçek bitiş zamanını bilmiyorsa uygulamanın yeniden açıldığı zamanı bitiş zamanı olarak seçebilir.
+
+Kesinti sonlandırıldıktan sonra normal Task çalışma akışına dönülür.
+
+Kesintinin recovery sonrasında sonlandırılması Task'ın çalışma timer'ını otomatik olarak başlatmaz.
+
+Kullanıcı çalışmaya devam etmek istediğinde açık bir çalışma eylemi gerçekleştirmelidir.
+
+Recovery mekanizması Kesintinin gerçek bitiş zamanını kullanıcı adına tahmin edemez.
+---
+## REQ-195 — Event Gerçekleşme ve Kayıt Zamanlarının Ayrılması
+
+**Status:** ACCEPTED
+
+Time Engine event'lerinde olayın gerçekleştiği zaman ile olayın sisteme kaydedildiği zaman birbirinden ayrılabilir.
+
+Event modeli aşağıdaki temel zaman bilgilerini içerebilir:
+
+- `occurred_at` — olayın gerçekleştiği zaman
+- `recorded_at` — olayın sisteme kaydedildiği zaman
+
+Normal çalışma sırasında bu iki zaman değeri genellikle birbirine çok yakın veya aynı olabilir.
+
+Recovery, gecikmiş kayıt veya benzeri durumlarda birbirlerinden farklı olabilir.
+
+Örneğin bir Kesinti gerçekten 10:47'de sona ermiş ancak uygulama bunu recovery sırasında 11:10'da kaydetmişse:
+
+- `occurred_at = 10:47`
+- `recorded_at = 11:10`
+
+olabilir.
+
+`occurred_at`, Time Engine zaman çizelgesinin oluşturulmasında esas alınan olay zamanıdır.
+
+`recorded_at`, olayın sisteme ne zaman kaydedildiğini gösterir ve tarihçenin kayıt sürecini takip etmek amacıyla kullanılabilir.
+
+Event'lerin immutable olması ilkesi korunur.
+---
+
+
 
 # 21. Explicitly Unresolved / Separate Design Topics
 

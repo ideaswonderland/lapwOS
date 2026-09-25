@@ -1302,24 +1302,51 @@ The system must be able to reconstruct past activity from events.
 
 ---
 
-## REQ-107 — Event examples
+## REQ-107 — Minimum Time Event Vocabulary
 
 **Status:** ACCEPTED
 
-The event model supports events conceptually similar to:
+lapwOS'un temel Time Engine event vocabulary'si aşağıdaki event'lerden oluşur:
 
-- SESSION_STARTED
-- TASK_STARTED
-- INTERRUPTION_STARTED
-- INTERRUPTION_ENDED
-- TASK_RESUMED
-- TASK_COMPLETED
-- WAIT_STARTED
-- WAIT_ENDED
-- SESSION_ENDED
+### Work
 
-The final event vocabulary is an implementation/design detail, not fixed by these names alone.
+- `WORK_STARTED`
+- `WORK_PAUSED`
 
+### Waiting
+
+- `WAITING_STARTED`
+- `WAITING_ENDED`
+
+### Interruption
+
+- `INTERRUPTION_STARTED`
+- `INTERRUPTION_ENDED`
+
+### Task Lifecycle
+
+- `TASK_COMPLETED`
+- `TASK_REOPENED`
+
+`WORK_STARTED`, Task veya Spontaneous Work üzerinde yeni bir çalışma döneminin başladığını ifade eder.
+
+`WORK_PAUSED`, aktif çalışma döneminin duraklatıldığını ifade eder.
+
+Çalışmaya yeniden başlamak için ayrı bir `WORK_RESUMED` event'i kullanılmaz; yeni bir `WORK_STARTED` event'i oluşturulur.
+
+Task değişimini ifade eden ayrı bir `TASK_SWITCHED` event'i kullanılmaz.
+
+Task geçişi, kaynak Task üzerindeki bekleme ve hedef Task üzerindeki yeni çalışma event'leri üzerinden anlaşılabilir.
+
+Task oluşturulması Time Engine event'i olarak zorunlu değildir.
+
+Task'ın oluşturulma zamanı Task domain verisi olarak tutulur.
+
+Session için `SESSION_STARTED` veya `SESSION_ENDED` Time Engine event'leri kullanılmaz.
+
+Time Engine event'leri anlamlı durum geçişlerini temsil eder.
+
+Her UI eyleminin ayrı bir Time Engine event'i olması zorunlu değildir.
 ---
 
 ## REQ-108 — Do not log every second
@@ -1329,6 +1356,14 @@ The final event vocabulary is an implementation/design detail, not fixed by thes
 The Time Engine does not need a per-second event stream.
 
 Events mark meaningful state transitions; durations are derived from event timestamps.
+
+Event kayıtları minimum fakat geçmiş zaman çizelgesini yeniden oluşturmak için yeterli olmalıdır.
+
+Event'ler gerçekleşmiş durum değişikliklerini temsil eder; her UI eyleminin ayrı bir event olması zorunlu değildir.
+
+Event kayıtları duration bilgisini source of truth olarak taşımaz. Süreler event timeline'ından türetilir.
+
+Time Engine event'leri immutable tarihsel kayıtlar olarak ele alınır.
 
 ---
 
@@ -1405,34 +1440,57 @@ The event history is the source of truth for time accounting.
 
 ---
 
-## REQ-115 — Session concept
+## REQ-115 — Session Concept
 
 **Status:** ACCEPTED
 
-A Session is a general unbroken working period.
+Session, kullanıcı tarafından isteğe bağlı olarak oluşturulan bir çalışma hedefi / countdown katmanıdır.
 
-A Session may contain:
+Session:
 
-- multiple Tasks,
-- multiple Projects,
-- Task switching.
+- Time Engine'in tarihsel kaynak nesnesi değildir,
+- kendi başına çalışma süresi olarak muhasebeleştirilmez,
+- herhangi bir Task'ı otomatik olarak başlatmaz,
+- kullanıcı tarafından açık bir çalışma eylemi gerçekleştirilmesini gerektirir,
+- aynı Session içinde birden fazla Task arasında geçiş yapılmasına izin verebilir.
 
-A Session may have a target duration such as 2 hours.
+Örneğin kullanıcı 2 saatlik bir Session oluşturabilir ve arayüzde:
+
+`Session Kalan Süre 01:47:15`
+
+gibi bir countdown görebilir.
+
+Session'ın varlığı herhangi bir Task'ın timer'ını otomatik olarak başlatmaz.
+
+Session geçmişi için ayrı `SESSION_STARTED` veya `SESSION_ENDED` Time Engine event'leri zorunlu değildir.
+
+Bir zaman aralığında kesintisiz çalışmanın ne kadar sürdüğü gibi bilgiler, gerektiğinde Time Engine event timeline'ından türetilir.
 
 ---
 
-## REQ-116 — Session reporting
+## REQ-116 — Session and Continuous Work Analysis
 
 **Status:** ACCEPTED
 
-Session reporting should show, as applicable:
+Session'ın kendisi Time Engine'de tarihsel çalışma süresi olarak muhasebeleştirilmez.
 
-- target vs actual duration,
-- number of completed Tasks,
-- causes of shortfall,
-- interruption information.
+Session ile ilgili gösterimler, gerektiğinde kullanıcı hedefi ile gerçek Time Engine olaylarının karşılaştırılmasına dayanabilir.
 
-A Session is not labeled as “failed”; target vs actual and causes are shown.
+Örneğin:
+
+- Session hedef süresi,
+- Session sırasında gerçekleşen gerçek çalışma süresi,
+- tamamlanan Task sayısı,
+- Session sırasında gerçekleşen Kesintiler,
+- Session sırasında gerçekleşen diğer çalışma durumları
+
+gösterilebilir.
+
+Bir Session hedefinin tamamlanmaması `başarısız` olarak etiketlenmez.
+
+Kesintisiz çalışma süresi gibi analizler Session'ın kendi süresinden değil, Time Engine event timeline'ından türetilir.
+
+Session'ın kendisi Time Engine'in ikinci bir kaynak noktası haline gelmemelidir.
 
 ---
 
@@ -2410,20 +2468,41 @@ Kesinti önce tamamlanmalı, ardından normal Task çalışma akışına dönül
 ---
 ## REQ-178 — Kesinti Sırasında Uygulama Kapatma
 
+## REQ-178 — Kesinti Sırasında Uygulama Kapatma
+
 **Status:** ACCEPTED
 
 Aktif bir Kesinti sırasında uygulamanın normal kullanıcı arayüzü üzerinden kapatılması engellenir.
 
-İşletim sistemi tarafından zorla sonlandırma, uygulama çökmesi veya benzeri beklenmeyen kapanma durumlarında sistem mevcut Kesinti kaydını mümkün olduğu ölçüde sonlandırarak kaydetmeye çalışır.
+İşletim sistemi tarafından zorla sonlandırma, uygulama çökmesi veya benzeri beklenmeyen kapanma durumlarında aktif Kesinti otomatik olarak sonlandırılmaz.
+
+Uygulama yeniden açıldığında aktif Kesinti recovery durumu olarak ele alınır.
+
+Kullanıcı Kesintiyi recovery sonrasında tamamlamadan:
+
+- Task değiştiremez,
+- başka Task görüntüleyemez,
+- çalışma başlatamaz,
+- yeni Kesinti başlatamaz,
+- Duraklatma yapamaz,
+- diğer çalışma eylemlerini gerçekleştiremez.
+
+Kullanıcı Kesintinin gerçek bitiş zamanını biliyorsa bu zamanı girebilir.
+
+Gerçek bitiş zamanı bilinmiyorsa uygulamanın yeniden açıldığı zaman Kesintinin bitiş zamanı olarak kullanılabilir.
 
 Kullanıcı tarafından Kesinti Nedeni girilememişse:
 
 - Kesinti Nedeni: `Diğer`
-- Kaynak: Sistem Fallback
+- Kaynak: `Sistem Fallback`
 
-olarak kaydedilir.
+olarak kaydedilebilir.
 
 Sistem Fallback ile oluşturulan kayıtlar, kullanıcının normal akışta `Diğer` seçtiği Kesinti kayıtlarından ayırt edilebilir.
+
+Recovery sonrasında Kesintinin tamamlanması Task'ın çalışma timer'ını otomatik olarak başlatmaz.
+
+Kullanıcı çalışmaya devam etmek istediğinde açık bir çalışma eylemi gerçekleştirmelidir.
 ---
 ## REQ-179 — Duraklatılmış Task'ın Status'u
 

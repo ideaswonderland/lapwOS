@@ -2903,6 +2903,20 @@ Bu davranış, bilgisayarın kullanıcı müdahalesi olmadan çalışma timer'ı
 
 **Related Architecture Decision:** [`ADR-0002-work-paused-source-and-reason.md`](../decisions/ADR/ADR-0002-work-paused-source-and-reason.md)
 
+### Initial Reason Vocabulary
+
+İlk sürümde `WORK_PAUSED` için yalnızca aşağıdaki
+`source` ve `reason` kombinasyonları geçerlidir:
+
+| source | reason |
+|---|---|
+| user | manual_pause |
+| system | sleep |
+| system | hibernate |
+
+Bu kombinasyonların dışındaki değerler ilk sürümde geçersizdir.
+Yeni nedenler ancak açık bir gereksinim ortaya çıktığında eklenir.
+
 ---
 ## REQ-194 — Aktif Kesinti Recovery Davranışı
 

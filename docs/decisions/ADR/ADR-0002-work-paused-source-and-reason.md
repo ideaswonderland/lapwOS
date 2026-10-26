@@ -68,3 +68,18 @@ These examples illustrate the intended structure. The complete allowed `reason` 
 
 - `REQ-193` — Sleep / Hibernate During Work
 - `REQ-207` — Work Interval Rules
+
+
+### Initial Reason Vocabulary
+
+İlk sürümde `WORK_PAUSED` için yalnızca aşağıdaki
+`source` ve `reason` kombinasyonları geçerlidir:
+
+| source | reason |
+|---|---|
+| user | manual_pause |
+| system | sleep |
+| system | hibernate |
+
+Bu kombinasyonların dışındaki değerler ilk sürümde geçersizdir.
+Yeni nedenler ancak açık bir gereksinim ortaya çıktığında eklenir.

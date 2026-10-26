@@ -1328,6 +1328,8 @@ lapwOS'un temel Time Engine event vocabulary'si aşağıdaki event'lerden oluşu
 - `TASK_COMPLETED`
 - `TASK_REOPENED`
 
+Bu liste, kabul edilmiş minimum Time Engine event vocabulary'sini tanımlar. Yeni event türleri ancak açık bir mimari gereksinim ortaya çıktığında ve ilgili karar kabul edildiğinde eklenebilir. UI eylemleri, domain değişiklikleri ve sistem/recovery işlemleri otomatik olarak ayrı bir event türü gerektirmez.
+
 `WORK_STARTED`, Task veya Spontaneous Work üzerinde yeni bir çalışma döneminin başladığını ifade eder.
 
 `WORK_PAUSED`, aktif çalışma döneminin duraklatıldığını ifade eder.
@@ -1347,6 +1349,10 @@ Session için `SESSION_STARTED` veya `SESSION_ENDED` Time Engine event'leri kull
 Time Engine event'leri anlamlı durum geçişlerini temsil eder.
 
 Her UI eyleminin ayrı bir Time Engine event'i olması zorunlu değildir.
+
+Event duration taşımaz.
+
+
 ---
 
 ## REQ-108 — Do not log every second
@@ -1444,27 +1450,27 @@ The event history is the source of truth for time accounting.
 
 **Status:** ACCEPTED
 
-Session, kullanıcı tarafından isteğe bağlı olarak oluşturulan bir çalışma hedefi / countdown katmanıdır.
+Session, kullanıcı tarafından isteğe bağlı olarak oluşturulan, Pomodoro benzeri bir odaklanma ve geri sayım katmanıdır. Session tarihsel raporlama nesnesi değildir.
 
-Session:
+### Core Behavior
 
-- Time Engine'in tarihsel kaynak nesnesi değildir,
-- kendi başına çalışma süresi olarak muhasebeleştirilmez,
-- herhangi bir Task'ı otomatik olarak başlatmaz,
-- kullanıcı tarafından açık bir çalışma eylemi gerçekleştirilmesini gerektirir,
-- aynı Session içinde birden fazla Task arasında geçiş yapılmasına izin verebilir.
+- Kullanıcı Session için bir hedef süre belirleyebilir ve kalan süreyi geri sayım olarak görebilir.
+- Session herhangi bir Task'ı otomatik olarak başlatmaz. Çalışma başlatmak veya sürdürmek için kullanıcının açık bir çalışma eylemi gerekir.
+- Aynı Session sırasında kullanıcı birden fazla Task arasında geçiş yapabilir.
+- Session countdown'ı gerçekleşen çalışma süresini temsil etmez.
+- Gerçek çalışma süresi yalnızca Time Engine tarafından türetilen `WORK` interval'ları üzerinden hesaplanır.
+- Session geçmişinin kalıcı olarak saklanması ve Session bazlı raporlama MVP kapsamında zorunlu değildir.
+- Session için ayrı `SESSION_STARTED` veya `SESSION_ENDED` Time Engine event'leri kullanılmaz.
 
-Örneğin kullanıcı 2 saatlik bir Session oluşturabilir ve arayüzde:
+Örneğin kullanıcı 2 saatlik bir Session oluşturabilir ve arayüzde `Session Kalan Süre 01:47:15` gibi bir geri sayım görebilir.
 
-`Session Kalan Süre 01:47:15`
+### Session Lifecycle and Termination
 
-gibi bir countdown görebilir.
+Session geçici bir arayüz durumudur; devamlılık veya kurtarma garantisi yoktur.
 
-Session'ın varlığı herhangi bir Task'ın timer'ını otomatik olarak başlatmaz.
-
-Session geçmişi için ayrı `SESSION_STARTED` veya `SESSION_ENDED` Time Engine event'leri zorunlu değildir.
-
-Bir zaman aralığında kesintisiz çalışmanın ne kadar sürdüğü gibi bilgiler, gerektiğinde Time Engine event timeline'ından türetilir.
+- Uygulama normal şekilde kapatıldığında, beklenmedik şekilde sonlandığında veya bilgisayar kapatılıp yeniden başlatıldığında aktif Session devam ettirilmez. Kullanıcı isterse yeni bir Session başlatabilir.
+- Session'ın sona ermesi veya kaybolması, aktif Task'ın durumunu ya da Time Engine çalışma geçmişini değiştirmez.
+- Session için ayrı bir kalıcı geçmiş veya recovery mekanizması zorunlu değildir.
 
 ---
 
@@ -2951,7 +2957,327 @@ olabilir.
 
 Event'lerin immutable olması ilkesi korunur.
 ---
+## REQ-196 — Time Engine Source of Truth
 
+**Status:** ACCEPTED
+
+Time Engine'in tarihsel source of truth'u Immutable Event Store'dur.
+
+Current State, Event Store'daki event'lerden türetilebilen bir projection'dır.
+
+Current State, tarihsel source of truth değildir.
+
+Recovery Snapshot, Time Engine source of truth'u değildir ve yalnızca son bilinen uygulama durumunu yeniden oluşturmayı kolaylaştıran yardımcı bir recovery verisidir.
+
+Event Store ile Current State veya Recovery Snapshot arasında uyuşmazlık oluştuğunda tarihsel gerçeklik açısından Event Store esas alınır.
+
+Current State gerektiğinde Event Store yeniden oynatılarak yeniden oluşturulabilir.
+---
+## REQ-197 — Command ve Event Ayrımı
+
+**Status:** ACCEPTED
+
+Kullanıcı eylemi ile Time Engine event'i aynı kavram değildir.
+
+Kullanıcının eylemi bir Command olarak değerlendirilir.
+
+Command'ın uygulanabilirliği Time Engine validation katmanında kontrol edilir.
+
+Geçerli bir Command bir veya daha fazla Time Engine event'i üretebilir.
+
+Event, gerçekleşmiş durum değişikliğini temsil eder.
+
+Bir Command'ın ürettiği birden fazla event, tek bir kullanıcı eyleminin atomik sonucu olarak ele alınır.
+
+Time Engine event'i doğrudan Event Store'a validation katmanı atlanarak yazılamaz.
+---
+## REQ-198 — User Action Driven State Transition
+
+**Status:** ACCEPTED
+
+Program düzgün çalışıyorken kullanıcı kontrol alanındaki durum değişiklikleri kullanıcının açık bir eylemi üzerinden gerçekleştirilmelidir.
+
+Sistem, kullanıcı eylemi olmadan normal çalışma akışında:
+
+- Waiting → Work,
+- Pause → Work,
+- Interruption → Work,
+- Reopen → Work
+
+gibi durum geçişlerini otomatik olarak gerçekleştirmez.
+
+İşletim sistemi kaynaklı zorunlu durum değişiklikleri ve tanımlanmış Recovery mekanizmaları bu kuralın dışındadır ve açıkça tanımlanmış sistem olayları olarak ele alınabilir.
+
+Recovery sonrasında da kullanıcı kontrolündeki çalışma durumları kullanıcı tarafından açıkça başlatılmalıdır.
+---
+## REQ-199 — Event Validation
+
+**Status:** ACCEPTED
+
+Time Engine'e yeni event eklenmeden önce event'in geçerliliği doğrulanmalıdır.
+
+Validation aşağıdaki üç bağlamı gerektiğinde birlikte değerlendirir:
+
+1. Current State
+2. Event Sequence / Event History
+3. Temporal Consistency
+
+Current State validation, Command'ın mevcut durumda uygulanabilir olup olmadığını kontrol eder.
+
+Event Sequence validation, oluşacak event'in mevcut tarihsel event dizisiyle çelişip çelişmediğini kontrol eder.
+
+Temporal validation, event'in occurred_at değerinin mevcut zaman çizelgesine uygunluğunu kontrol eder.
+
+Geçersiz event Event Store'a kaydedilmez.
+
+Validation sorumluluğu UI katmanına bırakılamaz.
+---
+## REQ-200 — Immutable Event Store
+
+**Status:** ACCEPTED
+
+Time Engine Event Store'a kaydedilmiş tarihsel event'ler immutable'dır.
+
+Geçmiş event'ler normal uygulama akışı içinde değiştirilmez veya silinmez.
+
+Event Store yalnızca Time Engine validation katmanından geçmiş event'leri kabul eder.
+
+Event Store'un görevi event'in tarihsel kaydını güvenilir biçimde saklamaktır; event'in geçerliliğini belirlemek Event Store'un sorumluluğu değildir.
+---
+## REQ-201 — Atomic Event Transaction
+
+**Status:** ACCEPTED
+
+Tek bir kullanıcı Command'ının ürettiği birden fazla Time Engine event'i atomik olarak kaydedilmelidir.
+
+Tüm event'ler başarıyla kaydedilirse transaction commit edilir.
+
+Event grubunun yalnızca bir bölümünün kaydedildiği kısmi commit durumu kabul edilmez.
+
+Örneğin aktif çalışan bir Task için `Tamamla` Command'ı:
+
+- `WORK_PAUSED`
+- `TASK_COMPLETED`
+
+event'lerini üretiyorsa bu event'ler tek atomik transaction'ın parçasıdır.
+
+---
+## REQ-202 — Temporal Event Model
+
+**Status:** ACCEPTED
+
+Her Time Engine event'i en az aşağıdaki zaman bilgilerini taşımalıdır:
+
+- `occurred_at`
+- `recorded_at`
+
+`occurred_at`, event'in tarihsel timeline üzerindeki gerçek gerçekleşme zamanıdır.
+
+`recorded_at`, event'in sisteme kaydedildiği zamandır.
+
+Timeline, süre hesapları ve tarihsel raporlar `occurred_at` üzerinden oluşturulur.
+
+`recorded_at` audit ve recovery bağlamında kullanılabilir.
+
+Normal kullanıcı akışında event'in `occurred_at` değeri gelecekte olamaz.
+
+Tanımlanmış Recovery senaryolarında `occurred_at` değeri `recorded_at` değerinden daha eski olabilir.
+---
+## REQ-203 — Event Ordering and Timestamp Precision
+
+**Status:** ACCEPTED
+
+Time Engine event timestamp'leri saniyenin altında hassasiyeti desteklemelidir.
+
+Milisaniye hassasiyeti desteklenmelidir.
+
+Aynı `occurred_at` değerine sahip birden fazla event bulunabilir.
+
+Aynı timestamp'e sahip event'lerin sıralaması transaction içindeki event order üzerinden korunmalıdır.
+
+`event_id` zaman sıralama anahtarı olarak kullanılmaz.
+
+Event ordering aşağıdaki önceliğe göre değerlendirilir:
+
+1. `occurred_at`
+2. aynı timestamp durumunda transaction içindeki event order
+---
+## REQ-204 — UTC Event Storage
+
+**Status:** ACCEPTED
+
+Time Engine tarihsel event timestamp'lerini UTC olarak saklamalıdır.
+
+Kullanıcı arayüzünde timestamp'ler kullanıcının geçerli timezone'una göre gösterilebilir.
+
+Takvim bazlı gün, hafta, ay ve yıl hesaplamaları kullanıcı timezone'u üzerinden değerlendirilmelidir.
+
+Event'in UTC timestamp'i timezone veya daylight saving time değişikliklerinden etkilenmemelidir.
+---
+## REQ-205 — Single Active Work
+
+**Status:** ACCEPTED
+
+Time Engine'de aynı anda yalnızca bir Work aktif olabilir.
+
+Bu kural Task Work ve Spontaneous Work için ortaktır.
+
+Aktif bir Work varken başka bir Work için doğrudan `WORK_STARTED` event'i oluşturulamaz.
+
+Başka bir Work'e geçiş için mevcut Work'ün geçerli bir kullanıcı eylemi veya tanımlanmış sistem/recovery davranışı sonucunda kapanmış olması gerekir.
+---
+## REQ-206 — Event to Interval Derivation
+
+**Status:** ACCEPTED
+
+Time Engine event'lerinden süre hesaplamak için türetilmiş Interval yapıları oluşturulabilir.
+
+Interval'ler Event Store'un source of truth'u değildir.
+
+Interval'ler event timeline'ından yeniden oluşturulabilir.
+
+Temel interval türleri:
+
+- `WORK`
+- `WAITING`
+- `INTERRUPTION`
+
+Event'ler doğrudan duration değeri taşımaz.
+
+Interval başlangıç ve bitiş zamanları ilgili event'lerin `occurred_at` değerlerinden türetilir.
+---
+## REQ-207 — Work Interval Rules
+
+**Status:** ACCEPTED
+
+`WORK_STARTED`, yeni bir Work Interval başlatır.
+
+Aktif Work Interval aşağıdaki event'lerden biriyle kapanabilir:
+
+- `WORK_PAUSED`
+- `WAITING_STARTED`
+- `INTERRUPTION_STARTED`
+- `TASK_COMPLETED`
+
+`WAITING_ENDED` veya `INTERRUPTION_ENDED` tek başına yeni Work Interval başlatmaz.
+
+Yeni Work Interval oluşturulması için yeni bir `WORK_STARTED` event'i gerekir.
+
+Aynı hedef için Work Interval'ler overlap edemez.
+
+---
+## REQ-208 — Waiting and Interruption Intervals
+
+**Status:** ACCEPTED
+
+`WAITING_STARTED` ile `WAITING_ENDED` arasında Waiting Interval oluşur.
+
+`INTERRUPTION_STARTED` ile `INTERRUPTION_ENDED` arasında Interruption Interval oluşur.
+
+Waiting ve Interruption interval'leri aktif Work Interval ile overlap edemez.
+
+`WAITING_ENDED` otomatik olarak Work başlatmaz.
+
+`INTERRUPTION_ENDED` otomatik olarak Work başlatmaz.
+
+Waiting veya Interruption sonrasında yeniden çalışma ancak yeni bir `WORK_STARTED` event'i ile başlar.
+---
+## REQ-209 — Pause as Control State
+
+**Status:** ACCEPTED
+
+`WORK_PAUSED`, aktif Work'ün duraklatıldığını ifade eder.
+
+Pause ayrı bir raporlanabilir faaliyet interval'i değildir.
+
+Pause süresi Actual Work'e dahil edilmez.
+
+Pause sonrası çalışma otomatik olarak başlamaz.
+
+Yeni bir çalışma dönemi için `WORK_STARTED` event'i oluşturulmalıdır.
+---
+## REQ-210 — Interval Non-Overlap
+
+**Status:** ACCEPTED
+
+Aynı hedef için aynı anda birden fazla aktif Time Engine interval'i bulunamaz.
+
+Aşağıdaki interval türleri birbirleriyle overlap edemez:
+
+- `WORK`
+- `WAITING`
+- `INTERRUPTION`
+
+Bir interval başladığında aynı hedef üzerindeki önceki uygun interval kapanmış olmalıdır.
+
+Interval katmanı geçersiz event dizilerini düzeltmez; geçersiz event dizileri Time Engine validation aşamasında engellenmelidir.
+---
+## REQ-211 — Aggregation Source
+
+**Status:** ACCEPTED
+
+Time Engine süre aggregation işlemlerinin temel birimi Work Interval'dir.
+
+Task, Project, Session ve takvim tabanlı raporlar aynı Work Interval kayıtlarının farklı aggregation perspektifleridir.
+
+Aynı gerçek çalışma döneminin farklı raporlama perspektiflerinde görünmesi, çalışma süresinin fiziksel olarak çoğaltıldığı anlamına gelmez.
+
+Aggregation sonuçları Event Store'a geri yazılarak yeni source of truth oluşturmaz.
+
+---
+## REQ-212 — Global Actual Work
+
+**Status:** ACCEPTED
+
+Global Actual Work, seçilen zaman aralığına düşen benzersiz Work Interval sürelerinin toplamıdır.
+
+Project, Session veya diğer ilişki bilgileri aynı Work Interval'in Global Actual Work hesabında birden fazla kez sayılmasına neden olamaz.
+
+Global Actual Work yalnızca gerçek Work Interval'lerine dayanır.
+---
+## REQ-213 — Project Aggregation
+
+**Status:** ACCEPTED
+
+Project Actual Work aşağıdaki kaynaklardan türetilir:
+
+- doğrudan bağlı Task'ların Work Interval'leri,
+- descendant Project'lere ait Work Interval'leri.
+
+Nested Project yapısında aynı Work Interval ancestor Project hesabında birden fazla kez sayılmaz.
+
+Bir Task birden fazla Project ile ilişkili olabilir.
+
+Project ilişkilerinin çoğalması Work Interval'in çoğalmasına neden olmaz.
+
+Project bazlı raporlama ile Global Actual Work raporlaması farklı aggregation scope'larıdır.
+---
+## REQ-214 — Time Range Aggregation
+
+**Status:** ACCEPTED
+
+Gün, hafta, ay, yıl ve özel tarih aralığı raporları ortak Time Range Aggregation mekanizmasını kullanmalıdır.
+
+Bir Work Interval birden fazla takvim aralığına taşabiliyorsa ilgili sınır noktalarında bölünerek her aralığa yalnızca o aralıkta gerçekleşen kısmı aktarılır.
+
+Takvim aralıkları kullanıcı timezone'una göre belirlenir.
+
+Aynı Work Interval'in farklı tarih aralıklarında görünmesi fiziksel çalışma süresini çoğaltmaz.
+---
+## REQ-215 — Session Aggregation
+
+**Status:** ACCEPTED
+
+Session Actual Work, Session'ın zaman aralığı ile Work Interval'lerinin kesişiminden türetilir.
+
+Session kendi başına Work Interval oluşturmaz.
+
+Session hedef süresi ile Session sırasında gerçekleşen Actual Work birbirinden ayrı değerlerdir.
+
+Session hedefinin tamamlanmaması otomatik olarak başarısızlık olarak etiketlenmez.
+---
+
+---
 
 
 # 21. Explicitly Unresolved / Separate Design Topics

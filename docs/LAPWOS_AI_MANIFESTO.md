@@ -383,27 +383,29 @@ decisions are accidentally made.
 
 **STATUS: ACCEPTED**
 
-lapwOS is fundamentally a **time engine and work history system**,
-not merely a timer application.
+lapwOS is fundamentally a time engine and work history system, not merely a timer application.
 
-The visible timer is a user interface layer.
+The visible timer is a user interface layer. The underlying system must be capable of reconstructing meaningful work history from immutable, validated events.
 
-The underlying system must be capable of reconstructing
-meaningful work history from recorded events.
+Example of the accepted minimum Time Engine event vocabulary:
 
-Example:
+WORK_STARTED
+WORK_PAUSED
 
-```text
-SESSION_STARTED
-TASK_STARTED
+WAITING_STARTED
+WAITING_ENDED
+
 INTERRUPTION_STARTED
 INTERRUPTION_ENDED
-TASK_RESUMED
-WAIT_STARTED
-WAIT_ENDED
+
 TASK_COMPLETED
-SESSION_ENDED
-```
+TASK_REOPENED
+
+These events are validated against the current state, event history, and temporal consistency rules before being committed to the immutable Event Store.
+
+Work, waiting, and interruption intervals are derived from events. The visible timer, current-state projection, recovery snapshots, and reports are not independent sources of historical truth.
+
+Session does not use separate SESSION_STARTED or SESSION_ENDED Time Engine events. Session work duration is derived by intersecting the Session time range with the relevant Work intervals.
 
 ---
 

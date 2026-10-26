@@ -1381,7 +1381,6 @@ The same historical time record must support reporting by:
 
 - Task
 - Project
-- Session
 - day
 - week
 - month
@@ -1478,25 +1477,13 @@ Session geçici bir arayüz durumudur; devamlılık veya kurtarma garantisi yokt
 
 **Status:** ACCEPTED
 
-Session'ın kendisi Time Engine'de tarihsel çalışma süresi olarak muhasebeleştirilmez.
+Session, tarihsel çalışma süresinin kaynağı veya kalıcı raporlama nesnesi değildir.
 
-Session ile ilgili gösterimler, gerektiğinde kullanıcı hedefi ile gerçek Time Engine olaylarının karşılaştırılmasına dayanabilir.
+Aktif Session sırasında arayüz, gerektiğinde Session hedef süresini ve Session devam ederken gerçekleşen gerçek çalışma bilgilerini gösterebilir. Bu gösterimler geçici Session durumuna ve Time Engine tarafından türetilen Work Interval'lara dayanır.
 
-Örneğin:
+Session hedefinin tamamlanmaması `başarısız` olarak etiketlenmez.
 
-- Session hedef süresi,
-- Session sırasında gerçekleşen gerçek çalışma süresi,
-- tamamlanan Task sayısı,
-- Session sırasında gerçekleşen Kesintiler,
-- Session sırasında gerçekleşen diğer çalışma durumları
-
-gösterilebilir.
-
-Bir Session hedefinin tamamlanmaması `başarısız` olarak etiketlenmez.
-
-Kesintisiz çalışma süresi gibi analizler Session'ın kendi süresinden değil, Time Engine event timeline'ından türetilir.
-
-Session'ın kendisi Time Engine'in ikinci bir kaynak noktası haline gelmemelidir.
+Kesintisiz çalışma süresi gibi tarihsel analizler Session kaydından değil, Time Engine event timeline'ından türetilir.
 
 ---
 
@@ -2016,9 +2003,9 @@ eylemini kullanabilir.
 
 Aktif bir Task varsa:
 
-1. Mevcut Task duraklatılır.
-2. Hedef Task başlatılır.
-3. Hedef Task'ın timer'ı hemen çalışmaya başlar.
+1. Mevcut Task'ın aktif çalışma dönemi sonlandırılır.
+2. Mevcut Task `Beklemede` durumuna alınır ve `Başka göreve geçiş yapıldı` bekleme nedeni kaydedilir.
+3. Hedef Task başlatılır ve çalışma timer'ı hemen çalışmaya başlar.
 4. Bu işlem Kesinti olarak kaydedilmez.
 
 `Geçiş Yap`, kullanıcının açıkça Task değiştirme niyetini
@@ -2472,7 +2459,6 @@ Kesinti tamamlanmadan:
 
 Kesinti önce tamamlanmalı, ardından normal Task çalışma akışına dönülmelidir.
 ---
-## REQ-178 — Kesinti Sırasında Uygulama Kapatma
 
 ## REQ-178 — Kesinti Sırasında Uygulama Kapatma
 
@@ -3218,11 +3204,13 @@ Interval katmanı geçersiz event dizilerini düzeltmez; geçersiz event diziler
 
 Time Engine süre aggregation işlemlerinin temel birimi Work Interval'dir.
 
-Task, Project, Session ve takvim tabanlı raporlar aynı Work Interval kayıtlarının farklı aggregation perspektifleridir.
+Task, Project ve takvim tabanlı raporlar aynı Work Interval kayıtlarının farklı aggregation perspektifleridir.
 
 Aynı gerçek çalışma döneminin farklı raporlama perspektiflerinde görünmesi, çalışma süresinin fiziksel olarak çoğaltıldığı anlamına gelmez.
 
 Aggregation sonuçları Event Store'a geri yazılarak yeni source of truth oluşturmaz.
+
+Aktif Session ekranındaki geçici çalışma göstergeleri, bu tarihsel raporlama modelinden ayrı değerlendirilir.
 
 ---
 ## REQ-212 — Global Actual Work
@@ -3263,19 +3251,6 @@ Bir Work Interval birden fazla takvim aralığına taşabiliyorsa ilgili sınır
 Takvim aralıkları kullanıcı timezone'una göre belirlenir.
 
 Aynı Work Interval'in farklı tarih aralıklarında görünmesi fiziksel çalışma süresini çoğaltmaz.
----
-## REQ-215 — Session Aggregation
-
-**Status:** ACCEPTED
-
-Session Actual Work, Session'ın zaman aralığı ile Work Interval'lerinin kesişiminden türetilir.
-
-Session kendi başına Work Interval oluşturmaz.
-
-Session hedef süresi ile Session sırasında gerçekleşen Actual Work birbirinden ayrı değerlerdir.
-
-Session hedefinin tamamlanmaması otomatik olarak başarısızlık olarak etiketlenmez.
----
 
 ---
 

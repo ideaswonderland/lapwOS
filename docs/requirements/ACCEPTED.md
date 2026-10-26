@@ -3047,6 +3047,8 @@ Event grubunun yalnızca bir bölümünün kaydedildiği kısmi commit durumu ka
 
 event'lerini üretiyorsa bu event'ler tek atomik transaction'ın parçasıdır.
 
+Bu örnekte `WORK_PAUSED` aktif Work Interval'ı kapatır; `TASK_COMPLETED` aynı interval'ı yeniden kapatmaz. Aktif Work Interval bulunmuyorsa `TASK_COMPLETED` için `WORK_PAUSED` oluşturulması zorunlu değildir.
+
 ---
 ## REQ-202 — Temporal Event Model
 
@@ -3143,13 +3145,24 @@ Aktif Work Interval aşağıdaki event'lerden biriyle kapanabilir:
 - `WORK_PAUSED`
 - `WAITING_STARTED`
 - `INTERRUPTION_STARTED`
-- `TASK_COMPLETED`
+
+`TASK_COMPLETED`, Task'ın tamamlanmasını kaydeder; Work Interval'ı doğrudan kapatmaz.
+
+Aktif bir Work Interval varken `Tamamla` Command'ı uygulanırsa:
+
+1. `WORK_PAUSED` aktif Work Interval'ı kapatır.
+2. `TASK_COMPLETED` Task'ın tamamlanmasını kaydeder.
+3. Her iki event aynı atomik transaction içinde kaydedilir.
+
+Aktif Work Interval yoksa `TASK_COMPLETED` tek başına kaydedilebilir; gereksiz bir `WORK_PAUSED` event'i oluşturulmaz.
 
 `WAITING_ENDED` veya `INTERRUPTION_ENDED` tek başına yeni Work Interval başlatmaz.
 
 Yeni Work Interval oluşturulması için yeni bir `WORK_STARTED` event'i gerekir.
 
 Aynı hedef için Work Interval'ler overlap edemez.
+
+**Related Architecture Decision:** [`ADR-0001-work-interval-completion.md`](../decisions/ADR/ADR-0001-work-interval-completion.md)
 
 ---
 ## REQ-208 — Waiting and Interruption Intervals

@@ -2181,6 +2181,7 @@ Temel prensip:
 > Kullanıcıya esneklik, veriye disiplin.
 
 ---
+
 ## REQ-165 — Kesintinin Sonlandırılması
 
 **Status:** ACCEPTED
@@ -2220,6 +2221,7 @@ Kullanıcı `Geçiş Yap` ile başka bir Task'a geçtiğinde:
 Task Transition, mevcut Task'ın çalışmasının sonlandırılması değil, başka bir Task üzerinde çalışmaya geçilmesi olarak değerlendirilir.
 
 ---
+
 ## REQ-167 — Kesinti Sırasında Task'a Devam Etme Kısıtı
 
 **Status:** ACCEPTED
@@ -2869,7 +2871,23 @@ olmalıdır.
 
 Bu sistem kaynaklı durdurma, Time Engine üzerinde `WORK_PAUSED` event'i ile kaydedilmelidir.
 
-Sistem kaynaklı durdurma, kullanıcı tarafından gerçekleştirilen `Duraklat / Beklet` eyleminden ayırt edilebilir olmalıdır.
+`WORK_PAUSED` event'i, duraklatmanın kaynağını ve nedenini ayrı metadata alanlarında taşımalıdır:
+
+- `source` — duraklatmayı tetikleyen aktör veya sistem katmanı
+- `reason` — duraklatmanın özel nedeni
+
+`source` alanı zorunludur. İlk desteklenen değerler:
+
+- `user`
+- `system`
+
+`reason` alanı, event için tanımlanmış geçerli bir değer taşımalıdır. Uygulama bilinmeyen bir nedeni kendiliğinden tahmin etmemelidir.
+
+İlk raporlama ihtiyacı, `source` üzerinden kullanıcı kaynaklı ve sistem kaynaklı duraklatmaları ayırt etmektir. Daha ayrıntılı neden raporlaması bu metadata sayesinde mümkün olabilir.
+
+İzin verilen değerler ve `source` ile `reason` arasındaki tutarlılık Time Engine validation katmanında doğrulanmalıdır.
+
+Bu metadata yalnızca `WORK_PAUSED` event'i için tanımlanır ve Work Interval türetme veya süre hesaplama kurallarını değiştirmez.
 
 Sleep veya Hibernate süresince geçen zaman çalışma süresine dahil edilmemelidir.
 
@@ -2882,6 +2900,9 @@ Kullanıcı çalışmaya devam etmek istediğinde açık bir `Devam Et` eylemi g
 `Devam Et` eylemi yeni bir `WORK_STARTED` event'i oluşturur.
 
 Bu davranış, bilgisayarın kullanıcı müdahalesi olmadan çalışma timer'ını yeniden başlatmasını engeller.
+
+**Related Architecture Decision:** [`ADR-0002-work-paused-source-and-reason.md`](../decisions/ADR/ADR-0002-work-paused-source-and-reason.md)
+
 ---
 ## REQ-194 — Aktif Kesinti Recovery Davranışı
 
@@ -3163,6 +3184,8 @@ Yeni Work Interval oluşturulması için yeni bir `WORK_STARTED` event'i gerekir
 Aynı hedef için Work Interval'ler overlap edemez.
 
 **Related Architecture Decision:** [`ADR-0001-work-interval-completion.md`](../decisions/ADR/ADR-0001-work-interval-completion.md)
+
+**Related Architecture Decision:** [`ADR-0002-work-paused-source-and-reason.md`](../decisions/ADR/ADR-0002-work-paused-source-and-reason.md)
 
 ---
 ## REQ-208 — Waiting and Interruption Intervals

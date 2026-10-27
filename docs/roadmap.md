@@ -1,6 +1,6 @@
 # lapwOS Roadmap
 
-**Status:** PROPOSED
+**Status:** ACCEPTED
 
 ## Purpose
 

@@ -2154,31 +2154,7 @@ Kurumdan cevap bekleniyor
 14:30 → 16:00
 Yönetici onayı bekleniyor
 
----
 
-## REQ-164 — Beklemede Durumunda Timer Başlatma Kısıtı
-
-**Status:** ACCEPTED
-
-Task Status ile Timer State birbirinden bağımsız kavramlar olmakla birlikte, veri bütünlüğünü korumak amacıyla bazı durum kombinasyonları sistem tarafından kısıtlanır.
-
-Bir Task'ın Status'u `Beklemede` ise çalışma timer'ı başlatılamaz.
-
-Kullanıcının Task üzerinde yeniden çalışmaya başlayabilmesi için öncelikle:
-
-1. Task Status'u `Beklemede` durumundan `Devam Ediyor` durumuna alınır.
-2. Ardından `Başlat / Devam Et` eylemi kullanılabilir.
-3. Çalışma timer'ı bu eylemden sonra başlar.
-
-Bekleme sona erdiğinde Task'ın çalışma timer'ı otomatik olarak başlamaz.
-
-Normal `Duraklat / Beklet` durumunda ise Task Status'u `Devam Ediyor` olarak kalabilir ve kullanıcı doğrudan `Başlat / Devam Et` ile timer'ı yeniden çalıştırabilir.
-
-Bu kısıtlama, Task Status ile Timer State arasındaki kavramsal ayrımı korurken veri bütünlüğünü sağlamak amacıyla uygulanır.
-
-Temel prensip:
-
-> Kullanıcıya esneklik, veriye disiplin.
 
 ---
 
@@ -3302,6 +3278,33 @@ Takvim aralıkları kullanıcı timezone'una göre belirlenir.
 
 Aynı Work Interval'in farklı tarih aralıklarında görünmesi fiziksel çalışma süresini çoğaltmaz.
 
+---
+## REQ-215 — Beklemede Olan Task'ı Tek Eylemle Devam Ettirme
+
+**Status:** ACCEPTED
+
+Bir Task `Beklemede` durumundayken kullanıcı `Devam Et` eylemini kullanarak aynı Task üzerinde yeniden çalışmaya başlayabilir.
+
+`Devam Et` eylemi aşağıdaki sonuçları tek bir Command kapsamında gerçekleştirmelidir:
+
+1. Task Status'u `Beklemede` durumundan `Devam Ediyor` durumuna geçer.
+2. Varsa ilgili aktif Waiting Interval sonlandırılır ve `WAITING_ENDED` event'i oluşturulur.
+3. Yeni bir çalışma dönemi başlatılır ve `WORK_STARTED` event'i oluşturulur.
+4. Task durum değişikliği ile ilgili Time Engine işlemleri atomik olarak gerçekleştirilir. İşlemin yalnızca bir kısmının başarılı olması kabul edilmez.
+
+`Devam Et` açık bir kullanıcı eylemidir. Waiting'in sona ermesi tek başına çalışma başlatmaz.
+
+Command uygulanmadan önce mevcut Task Status, Time Engine Current State, event geçmişi ve zamansal tutarlılık doğrulanmalıdır.
+
+Aynı anda başka bir Work aktifse yeni `WORK_STARTED` event'i oluşturulamaz. Kullanıcı başka bir Task üzerinde çalışıyorsa mevcut Task geçiş kuralları uygulanmalıdır.
+
+Aktif bir Kesinti devam ederken `Devam Et` kullanılamaz. Önce ilgili Kesinti, kabul edilmiş Kesinti sonlandırma kurallarına göre tamamlanmalıdır.
+
+Command başarısız olduğunda Task Status veya Time Engine kayıtları kısmen değiştirilmiş durumda bırakılamaz.
+
+Waiting ve Work Interval'leri overlap edemez. Yeni Work Interval, `WORK_STARTED` event'inin `occurred_at` değeri üzerinden türetilir.
+
+Task Status değişikliğinin tarihsel olarak nasıl temsil edildiği ve Event Store ile nasıl tutarlı tutulduğu mevcut kabul edilmiş mimari kurallara uygun olmalıdır. Bu gereksinim, yeni bir Time Engine event türü tanımlamaz.
 ---
 
 
